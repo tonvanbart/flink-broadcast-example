@@ -32,7 +32,7 @@ public class Dataserver {
         while (running) {
             try {
                 log.debug("sending data");
-                String value = "|" + (1 + random.nextInt(6));
+                String value = (1 + random.nextInt(6)) + " ";
                 socket.getOutputStream().write(value.getBytes());
                 socket.getOutputStream().flush();
                 Thread.sleep(1000);

@@ -30,7 +30,7 @@ public class StateServer {
                     Socket socket = iter.next();
                     try {
                         log.info("Notifying {}", socket);
-                        socket.getOutputStream().write(("|" + factor).getBytes());
+                        socket.getOutputStream().write((factor + " ").getBytes());
                         socket.getOutputStream().flush();
                     } catch (IOException e) {
                         log.warn("error writing {}", e);
