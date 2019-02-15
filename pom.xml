@@ -62,6 +62,9 @@
                         <manifest>
                             <mainClass>org.vanbart.flinkjobs.BroadcastState</mainClass>
                         </manifest>
+                        <manifestEntries>
+                            <Class-Path>..</Class-Path>
+                        </manifestEntries>
                     </archive>
                 </configuration>
                 <executions>

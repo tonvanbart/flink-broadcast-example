@@ -1,11 +1,13 @@
 package org.vanbart.servers;
 
+import org.apache.log4j.PropertyConfigurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URL;
 import java.util.Random;
 
 /**
@@ -18,6 +20,10 @@ public class Dataserver {
     private static final Logger log = LoggerFactory.getLogger(Dataserver.class);
 
     public static void main(String[] args) throws Exception {
+        URL resource = Dataserver.class.getClassLoader().getResource("default-log4j.properties");
+//        System.out.println("resource = " + resource);
+        PropertyConfigurator.configure(resource);
+
         ServerSocket serverSocket = new ServerSocket(7777);
         log.info("Starting server.");
         while (true) {
