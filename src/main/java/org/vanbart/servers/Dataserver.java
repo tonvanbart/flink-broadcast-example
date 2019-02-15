@@ -37,8 +37,8 @@ public class Dataserver {
         boolean running = true;
         while (running) {
             try {
-                log.debug("sending data");
                 String value = (1 + random.nextInt(6)) + " ";
+                log.debug("sending data: {}", value);
                 socket.getOutputStream().write(value.getBytes());
                 socket.getOutputStream().flush();
                 Thread.sleep(1000);
