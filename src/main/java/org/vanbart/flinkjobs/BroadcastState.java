@@ -3,8 +3,11 @@ package org.vanbart.flinkjobs;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.state.StateDescriptor;
+import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.BroadcastStream;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
@@ -20,13 +23,18 @@ import org.slf4j.LoggerFactory;
 import org.vanbart.servers.Dataserver;
 
 import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 
 public class BroadcastState {
 
     private static final Logger log = LoggerFactory.getLogger(BroadcastState.class);
 
-    public static final MapStateDescriptor<String, String> mapStateDescriptor =
-            new MapStateDescriptor<String, String>("foo", BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.STRING_TYPE_INFO);
+//    public static final MapStateDescriptor<String, Integer> mapStateDescriptor =
+//            new MapStateDescriptor<>("multiplicationFactor", BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.INT_TYPE_INFO);
+
+        public static final MapStateDescriptor<String, Integer> mapStateDescriptor =
+            new MapStateDescriptorWithDefault("multiplicationFactor", BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.INT_TYPE_INFO, new HashMap<>());
 
     /**
      * Main Flink job.
@@ -35,6 +43,12 @@ public class BroadcastState {
      */
     public static void main(String[] args) throws Exception {
         URL resource = Dataserver.class.getClassLoader().getResource("default-log4j.properties");
+//
+        Map<String, Integer> defaultValue = mapStateDescriptor.getDefaultValue();
+        System.out.println("defaultValue = " + defaultValue);
+        log.info("defaultValue = {}", defaultValue);
+
+        defaultValue.put("value", 1);
         PropertyConfigurator.configure(resource);
 
         // set up the streaming execution environment
@@ -65,6 +79,8 @@ public class BroadcastState {
      */
     static class StatefulMultiply extends BroadcastProcessFunction<String, String, String> {
 
+        private transient ValueState<Integer> factorState;
+
         public StatefulMultiply(Integer factor) {
             super();
             log.debug("StatefulMultiply({})", factor);
@@ -81,6 +97,8 @@ public class BroadcastState {
             log.debug("processElement({})", value);
             try {
                 int number = Integer.parseInt(value);
+                Integer factor = readOnlyContext.getBroadcastState(mapStateDescriptor).get("value");
+                if (factor == null) { factor = 1; }
                 collector.collect(Integer.toString(factor * number));
             } catch (NumberFormatException e) {
                 log.warn("processElement: could not parse '{}' to Integer, skipping element", value);
@@ -93,10 +111,22 @@ public class BroadcastState {
             try {
                 factor = Integer.parseInt(value);
                 log.debug("multiply factor set to {}", value);
+                context.getBroadcastState(mapStateDescriptor).put("value", factor);
             } catch (NumberFormatException e) {
                 log.warn("Could not parse '{}' to Integer, state unchanged.", value);
             }
         }
+
+        @Override
+        public void open(Configuration configuration) {
+        }
     }
 
+    public static class MapStateDescriptorWithDefault<UK,UV> extends MapStateDescriptor<UK, UV> {
+
+        public MapStateDescriptorWithDefault(String name, TypeInformation<UK> keyTypeInfo, TypeInformation<UV> valueTypeInfo, Map<UK, UV> defaultValue) {
+            super(name, keyTypeInfo, valueTypeInfo);
+            this.defaultValue = defaultValue;
+        }
+    }
 }
