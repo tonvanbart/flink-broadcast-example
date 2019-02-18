@@ -33,6 +33,7 @@ public class BroadcastState {
     public static final MapStateDescriptor<String, Integer> mapStateDescriptor =
             new MapStateDescriptor<>("multiplicationFactor", BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.INT_TYPE_INFO);
 
+    // failed attempt to have a boradcast state with a default value:
 //        public static final MapStateDescriptor<String, Integer> mapStateDescriptor =
 //            new MapStateDescriptorWithDefault("multiplicationFactor", BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.INT_TYPE_INFO, new HashMap<>());
 
@@ -69,7 +70,7 @@ public class BroadcastState {
         BroadcastStream<String> broadcast = stringDataStreamSource.broadcast(mapStateDescriptor);
 
         data.connect(broadcast)
-                .process(new StatefulMultiply(1))
+                .process(new StatefulMultiply())
                 .addSink(new PrintSinkFunction<>());
 
         env.execute("multiply");
@@ -80,18 +81,12 @@ public class BroadcastState {
      */
     static class StatefulMultiply extends BroadcastProcessFunction<String, String, String> {
 
-        private transient ValueState<Integer> factorState;
-
-        public StatefulMultiply(Integer factor) {
+        public StatefulMultiply() {
             super();
-            log.debug("StatefulMultiply({})", factor);
-            this.factor = factor;
+            log.debug("StatefulMultiply()");
         }
 
         private static final Logger log = LoggerFactory.getLogger(StatefulMultiply.class);
-
-        /** the multiply factor, initially 1. */
-        private Integer factor = 1;
 
         @Override
         public void processElement(String value, ReadOnlyContext readOnlyContext, Collector<String> collector) throws Exception {
@@ -110,7 +105,7 @@ public class BroadcastState {
         public void processBroadcastElement(String value, Context context, Collector<String> collector) throws Exception {
             log.debug("processBroadcastElement({})", value);
             try {
-                factor = Integer.parseInt(value);
+                int factor = Integer.parseInt(value);
                 log.debug("multiply factor set to {}", value);
                 context.getBroadcastState(mapStateDescriptor).put("value", factor);
             } catch (NumberFormatException e) {
@@ -123,6 +118,11 @@ public class BroadcastState {
         }
     }
 
+    /**
+     * {@link MapStateDescriptor} with default value.
+     * @param <UK>
+     * @param <UV>
+     */
     public static class MapStateDescriptorWithDefault<UK,UV> extends MapStateDescriptor<UK, UV> {
 
         public MapStateDescriptorWithDefault(String name, TypeInformation<UK> keyTypeInfo, TypeInformation<UV> valueTypeInfo, Map<UK, UV> defaultValue) {
