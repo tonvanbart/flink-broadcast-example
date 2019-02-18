@@ -30,11 +30,11 @@ public class BroadcastState {
 
     private static final Logger log = LoggerFactory.getLogger(BroadcastState.class);
 
-//    public static final MapStateDescriptor<String, Integer> mapStateDescriptor =
-//            new MapStateDescriptor<>("multiplicationFactor", BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.INT_TYPE_INFO);
+    public static final MapStateDescriptor<String, Integer> mapStateDescriptor =
+            new MapStateDescriptor<>("multiplicationFactor", BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.INT_TYPE_INFO);
 
-        public static final MapStateDescriptor<String, Integer> mapStateDescriptor =
-            new MapStateDescriptorWithDefault("multiplicationFactor", BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.INT_TYPE_INFO, new HashMap<>());
+//        public static final MapStateDescriptor<String, Integer> mapStateDescriptor =
+//            new MapStateDescriptorWithDefault("multiplicationFactor", BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.INT_TYPE_INFO, new HashMap<>());
 
     /**
      * Main Flink job.
@@ -48,8 +48,8 @@ public class BroadcastState {
         System.out.println("defaultValue = " + defaultValue);
         log.info("defaultValue = {}", defaultValue);
 
-        defaultValue.put("value", 1);
-        PropertyConfigurator.configure(resource);
+//        defaultValue.put("value", 1);
+//        PropertyConfigurator.configure(resource);
 
         // set up the streaming execution environment
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
