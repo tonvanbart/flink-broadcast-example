@@ -43,6 +43,7 @@ public class BroadcastState {
      */
     public static void main(String[] args) throws Exception {
         URL resource = Dataserver.class.getClassLoader().getResource("default-log4j.properties");
+        PropertyConfigurator.configure(resource);
 //
         Map<String, Integer> defaultValue = mapStateDescriptor.getDefaultValue();
         System.out.println("defaultValue = " + defaultValue);
