@@ -1,16 +1,10 @@
 package org.vanbart.flinkjobs;
 
-import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.state.MapStateDescriptor;
-import org.apache.flink.api.common.state.StateDescriptor;
-import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.BroadcastStream;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.co.BroadcastProcessFunction;
@@ -23,7 +17,6 @@ import org.slf4j.LoggerFactory;
 import org.vanbart.servers.Dataserver;
 
 import java.net.URL;
-import java.util.HashMap;
 import java.util.Map;
 
 public class BroadcastState {
@@ -33,10 +26,6 @@ public class BroadcastState {
     public static final MapStateDescriptor<String, Integer> mapStateDescriptor =
             new MapStateDescriptor<>("multiplicationFactor", BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.INT_TYPE_INFO);
 
-    // failed attempt to have a boradcast state with a default value:
-//        public static final MapStateDescriptor<String, Integer> mapStateDescriptor =
-//            new MapStateDescriptorWithDefault("multiplicationFactor", BasicTypeInfo.STRING_TYPE_INFO, BasicTypeInfo.INT_TYPE_INFO, new HashMap<>());
-
     /**
      * Main Flink job.
      * @param args
@@ -45,18 +34,13 @@ public class BroadcastState {
     public static void main(String[] args) throws Exception {
         URL resource = Dataserver.class.getClassLoader().getResource("default-log4j.properties");
         PropertyConfigurator.configure(resource);
-//
+
         Map<String, Integer> defaultValue = mapStateDescriptor.getDefaultValue();
         System.out.println("defaultValue = " + defaultValue);
         log.info("defaultValue = {}", defaultValue);
 
-//        defaultValue.put("value", 1);
-//        PropertyConfigurator.configure(resource);
-
         // set up the streaming execution environment
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-
-        // uncomment following to explicitly set parallelism
 //        env.setParallelism(1);
 
         ParameterTool paramTool = ParameterTool.fromArgs(args);
@@ -64,12 +48,14 @@ public class BroadcastState {
 
         DataStreamSource<String> data = env.addSource(new SocketTextStreamFunction("localhost", 7777, " ", 3));
 
-        DataStream<String> stringDataStreamSource = env.socketTextStream("localhost", 7778, " ", 3);
-        // uncomment following line to have the elements in the stream printed
-//        stringDataStreamSource.print();
-        BroadcastStream<String> broadcast = stringDataStreamSource.broadcast(mapStateDescriptor);
+        SocketTextStreamFunction stateSocket = new SocketTextStreamFunction("localhost", 7778, " ", 3);
+        InitializingSourceFunction states = new InitializingSourceFunction(stateSocket, "2");
+        DataStreamSource<String> statesSource = env.addSource(states);
 
-        data.connect(broadcast)
+//        stringDataStreamSource.print();
+        BroadcastStream<String> broadcastedState = statesSource.broadcast(mapStateDescriptor);
+
+        data.connect(broadcastedState)
                 .process(new StatefulMultiply())
                 .addSink(new PrintSinkFunction<>());
 
@@ -94,7 +80,10 @@ public class BroadcastState {
             try {
                 int number = Integer.parseInt(value);
                 Integer factor = readOnlyContext.getBroadcastState(mapStateDescriptor).get("value");
-                if (factor == null) { factor = 1; }
+                if (factor == null) {
+                    log.warn("\nDid not find a broadcast state, defaulting to 1!\n");
+                    factor = 1;
+                }
                 collector.collect(Integer.toString(factor * number));
             } catch (NumberFormatException e) {
                 log.warn("processElement: could not parse '{}' to Integer, skipping element", value);
@@ -115,19 +104,6 @@ public class BroadcastState {
 
         @Override
         public void open(Configuration configuration) {
-        }
-    }
-
-    /**
-     * {@link MapStateDescriptor} with default value.
-     * @param <UK>
-     * @param <UV>
-     */
-    public static class MapStateDescriptorWithDefault<UK,UV> extends MapStateDescriptor<UK, UV> {
-
-        public MapStateDescriptorWithDefault(String name, TypeInformation<UK> keyTypeInfo, TypeInformation<UV> valueTypeInfo, Map<UK, UV> defaultValue) {
-            super(name, keyTypeInfo, valueTypeInfo);
-            this.defaultValue = defaultValue;
         }
     }
 }
