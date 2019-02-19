@@ -49,10 +49,8 @@ public class BroadcastState {
         DataStreamSource<String> data = env.addSource(new SocketTextStreamFunction("localhost", 7777, " ", 3));
 
         SocketTextStreamFunction stateSocket = new SocketTextStreamFunction("localhost", 7778, " ", 3);
-        InitializingSourceFunction states = new InitializingSourceFunction(stateSocket, "2");
-        DataStreamSource<String> statesSource = env.addSource(states);
+        DataStreamSource<String> statesSource = env.addSource(new InitializingSourceFunction(stateSocket, "2"));
 
-//        stringDataStreamSource.print();
         BroadcastStream<String> broadcastedState = statesSource.broadcast(mapStateDescriptor);
 
         data.connect(broadcastedState)
