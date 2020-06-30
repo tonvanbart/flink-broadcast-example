@@ -46,6 +46,7 @@ class StatefulMultiply extends BroadcastProcessFunction<String, String, String> 
                         log.debug("Handling buffered value: {}", nr);
                         collector.collect(Integer.toString(factor * nr));
                     }
+                    bufferedValues.clear();
                 }
                 collector.collect(Integer.toString(factor * number));
             }
